@@ -170,7 +170,7 @@ const ProductPage = ({ params }) => {
           <div className="pl-4">
             <span className="text-xl font-black text-white">{content.price}</span>
           </div>
-          <button className="flex items-center gap-3 bg-emerald-500 text-white px-8 py-4 rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-emerald-500/20">
+          <button className="flex items-center gap-3 bg-emerald-500 text-white px-8 py-4 rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-emerald-500/20" onClick={()=>router.push('/contactus')}>
             <PhoneCallIcon size={18} />
             <span>{content.labels.contact}</span>
           </button>
