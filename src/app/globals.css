@@ -1,2 +1,24 @@
 @import "tailwindcss";
 
+@keyframes wave {
+  0% {
+    transform: rotate(0deg) skewY(0deg);
+  }
+  25% {
+    transform: rotate(2deg) skewY(5deg) scaleX(1.02);
+  }
+  50% {
+    transform: rotate(0deg) skewY(0deg) scaleX(1);
+  }
+  75% {
+    transform: rotate(-2deg) skewY(-5deg) scaleX(0.98);
+  }
+  100% {
+    transform: rotate(0deg) skewY(0deg);
+  }
+}
+
+.animate-wave {
+  animation: wave 2s ease-in-out infinite;
+  transform-origin: left center; 
+}

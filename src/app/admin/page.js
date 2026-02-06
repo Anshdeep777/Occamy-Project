@@ -28,6 +28,9 @@ const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6"];
 
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
+  const [aiSummary, setAiSummary] = useState(null);
+const [aiLoading, setAiLoading] = useState(false);
+
   const [filters, setFilters] = useState({
     range: "MONTH",
     state: "ALL",
@@ -42,6 +45,67 @@ export default function AdminDashboard() {
       .then(res => res.json())
       .then(setData);
   }, [filters]);
+
+  async function generateAiSummary() {
+    try {
+      setAiLoading(true);
+      setAiSummary(null);
+  
+      const res = await fetch("/api/admin/analytics/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          filters: {
+            range: filters.range,
+            state: filters.state,
+            district: filters.district,
+          },
+          metrics: {
+            meetings: data.kpis.meetings,
+            samples: data.kpis.samples,
+            sales: data.kpis.sales,
+            b2c: data.b2bVsB2c?.find(x => x.name === "B2C")?.value || 0,
+            b2b: data.b2bVsB2c?.find(x => x.name === "B2B")?.value || 0,
+          },
+          productSales: data.productSales,
+          distributorPerformance: data.distributorPerformance,
+        }),
+      });
+  
+      const result = await res.json();
+      setAiSummary(result.summary);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to generate AI summary");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  function parseAISummary(text) {
+    if (!text) return [];
+  
+    const sections = [];
+    const blocks = text.split(/\n\s*\n/); // paragraph based
+  
+    blocks.forEach(block => {
+      const lines = block.split("\n").filter(Boolean);
+      if (!lines.length) return;
+  
+      const title = lines[0].replace(/[:\-]/g, "").toUpperCase();
+      const content = lines.slice(1);
+  
+      sections.push({
+        title,
+        content
+      });
+    });
+  
+    return sections;
+  }
+  
+  
 
   const downloadCSV = () => {
     if (!data) return;
@@ -108,14 +172,32 @@ export default function AdminDashboard() {
               <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 leading-none">Dashboard</h1>
             </div>
             
-            <button 
-              onClick={downloadCSV}
-              className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-2xl text-xs font-bold hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 group active:scale-95"
-            >
-              <Download size={14} className="group-hover:translate-y-0.5 transition-transform" />
-              Download full report <MousePointer2/>
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+  {/* Download CSV – secondary on mobile */}
+  <button 
+    onClick={downloadCSV}
+    className="flex items-center justify-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-2xl text-xs font-bold hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 active:scale-95"
+  >
+    <Download size={14} />
+    <span className="hidden sm:inline">Download full report</span>
+    <span className="sm:hidden">Download</span>
+  </button>
+
+  {/* AI Summary – primary */}
+  <button
+    onClick={generateAiSummary}
+    disabled={aiLoading}
+    className="flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-2xl text-xs font-bold hover:bg-emerald-700 transition-all shadow-xl active:scale-95 disabled:opacity-60"
+  >
+    {aiLoading ? "Analyzing…" : "AI Summary"}
+  </button>
+</div>
+
           </div>
+          
+
+
+
 
           <div className="flex flex-col md:flex-row gap-3">
             <div className="bg-white/60 p-1 rounded-2xl border border-white flex shadow-sm backdrop-blur-md">
@@ -168,6 +250,50 @@ export default function AdminDashboard() {
           <KPI label="Sales" value={kpis.sales} icon={<TrendingUp size={18}/>} color="bg-rose-500" />
           <KPI label="Distance" value={`${kpis.distance}k`} icon={<Navigation size={18}/>} color="bg-slate-800" />
         </div>
+        {aiSummary && (
+  <div className="bg-white/70 backdrop-blur-2xl border border-white/60 rounded-[2.5rem] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.05)] space-y-8">
+    
+    {/* Header */}
+    <div className="flex items-center gap-3">
+      <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white font-black flex items-center justify-center">
+        AI
+      </div>
+      <h2 className="text-2xl font-black tracking-tight text-slate-900">
+        AI Executive Summary
+      </h2>
+    </div>
+
+    {/* Sections */}
+    <div className="space-y-6">
+      {parseAISummary(aiSummary).map((sec, idx) => (
+        <div key={idx} className="space-y-3">
+          
+          {/* Heading – SINGLE STYLE */}
+          <h3 className="text-sm font-black uppercase tracking-widest text-emerald-600">
+            {sec.title}
+          </h3>
+
+          {/* Content – SINGLE STYLE */}
+          <ul className="space-y-2">
+            {sec.content.map((line, i) => (
+              <li
+                key={i}
+                className="flex gap-3 text-sm text-slate-700 leading-relaxed"
+              >
+                <span className="text-slate-400">•</span>
+                <span>{line}</span>
+              </li>
+            ))}
+          </ul>
+
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
+
+
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <ChartCard title="B2C vs B2B Sales">
@@ -332,3 +458,4 @@ function CustomTooltip({ active, payload }) {
   }
   return null;
 }
+
